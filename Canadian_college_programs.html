@@ -72,8 +72,9 @@ img.site-logo{height:48px;width:auto;display:block;}
 .dt-buttons .dt-button{font-family:inherit!important;font-size:0.84em!important;border-radius:3px!important;}
 .dataTables_filter label{font-family:inherit;font-size:0.86em;}
 .dataTables_filter input{font-family:inherit;font-size:0.86em;border:1px solid var(--border);border-radius:3px;padding:4px 8px;}
-#programs-dt thead tr#filter-row th{cursor:default;}
-
+/* Filter inputs live inside each column <th> */
+input.col-filter-input{display:block;width:100%;margin-top:5px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;font-family:inherit;font-size:0.78em;font-weight:400;color:var(--dark);background:var(--white);box-sizing:border-box;}
+input.col-filter-input:focus{outline:none;border-color:var(--purple);}
 /* TABLE OVERFLOW — horizontal scroll without thead cloning */
 #programs-view .dt-container{overflow-x:auto;}
 
@@ -215,7 +216,6 @@ img.site-logo{height:48px;width:auto;display:block;}
       <table id="programs-dt" class="display" style="width:100%">
         <thead>
           <tr><th>Category</th><th>Program name</th><th>Subcategory</th><th>Institution</th><th>Province</th><th>Credential</th><th>Program description</th><th>Program URL</th><th>Occupation examples</th><th>Duration</th><th>Full Address</th><th>Campus count</th><th>Latitude</th><th>Longitude</th><th>Institution URL</th></tr>
-          <tr id="filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
         </thead>
       </table>
     </div>
@@ -725,30 +725,29 @@ img.site-logo{height:48px;width:auto;display:block;}
       ],
       pageLength: 25,
       ordering: true,
-      orderCellsTop: true,
+      orderCellsTop: false,
       /* scrollX removed: it clones <thead> which makes filter-row targeting unreliable */
       initComplete: function () {
         var api = this.api();
-        /* Single <thead> in DOM: row 0 = titles, row 1 = filter-row.
-           Build a plain text input in every visible column. */
-        var filterThs = $("#programs-dt thead tr#filter-row th");
+        /* Append a filter input INSIDE each visible column's own <th>.
+           api.column(n).header() is guaranteed to return the correct <th>
+           for column n -- no index arithmetic, no alignment issues. */
         api.columns().every(function () {
           var colIdx = this.index();
           var col    = this;
-          var th     = filterThs[colIdx];
+          if (CFG.hideIdx.indexOf(colIdx) >= 0) return; /* skip hidden */
+
+          var th = api.column(colIdx).header();
           if (!th) return;
-          if (CFG.hideIdx.indexOf(colIdx) >= 0) {
-            th.innerHTML = "";
-            return;
-          }
+
           var input = document.createElement("input");
           input.type        = "text";
           input.placeholder = "Search...";
-          input.style.cssText = "width:100%;padding:3px 5px;border:1px solid #DEE2E6;border-radius:3px;font-family:inherit;font-size:0.8em;box-sizing:border-box;";
-          input.addEventListener("keyup", function () {
+          input.className   = "col-filter-input";
+          input.addEventListener("click",  function (e) { e.stopPropagation(); }); /* don't trigger sort */
+          input.addEventListener("keyup",  function () {
             if (col.search() !== this.value) col.search(this.value).draw();
           });
-          th.innerHTML = "";
           th.appendChild(input);
         });
       }
